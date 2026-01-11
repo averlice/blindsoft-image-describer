@@ -6,7 +6,8 @@ SETTINGS_FILE = "settings.json"
 DEFAULT_SETTINGS = {
     "prefix": "alii!",
     "error_log_channel_id": None,
-    "error_log_dm": False
+    "error_log_dm": False,
+    "auto_update": True
 }
 
 def load_settings():

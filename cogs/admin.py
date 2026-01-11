@@ -1,8 +1,10 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from google import genai
 import utils
 import os
+import subprocess
+import asyncio
 from config import GEMINI_API_KEY
 
 class Admin(commands.Cog):
@@ -10,6 +12,65 @@ class Admin(commands.Cog):
         self.bot = bot
         # Initialize client here for listmodels
         self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.auto_update_task.start()
+
+    def cog_unload(self):
+        self.auto_update_task.cancel()
+
+    @tasks.loop(hours=1)
+    async def auto_update_task(self):
+        if utils.get_setting("auto_update"):
+            try:
+                process = await asyncio.create_subprocess_shell(
+                    "git pull",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await process.communicate()
+                output = stdout.decode().strip()
+                if output and "Already up to date." not in output:
+                    print(f"[Auto-Update] {output}")
+            except Exception as e:
+                print(f"[Auto-Update] Failed: {e}")
+
+    @auto_update_task.before_loop
+    async def before_auto_update_task(self):
+        await self.bot.wait_until_ready()
+
+    @commands.command(name="update", description="Manually pulls updates from the repository (Owner Only).")
+    @commands.is_owner()
+    async def update(self, ctx: commands.Context):
+        await ctx.send("Checking for updates...")
+        try:
+            process = await asyncio.create_subprocess_shell(
+                "git pull",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            
+            output = stdout.decode().strip()
+            error = stderr.decode().strip()
+            
+            msg = f"**Update Result:**\n```\n{output}\n```"
+            if error:
+                msg += f"\n**Errors:**\n```\n{error}\n```"
+            
+            if len(msg) > 2000:
+                msg = msg[:1990] + "...\n```"
+            
+            await ctx.send(msg)
+        except Exception as e:
+            await ctx.send(f"Update failed: {e}")
+
+    @commands.command(name="updatecheck", description="Toggles automatic hourly updates (Owner Only).")
+    @commands.is_owner()
+    async def updatecheck(self, ctx: commands.Context):
+        current = utils.get_setting("auto_update")
+        new_status = not current
+        utils.update_setting("auto_update", new_status)
+        status_str = "enabled" if new_status else "disabled"
+        await ctx.send(f"Automatic hourly updates have been **{status_str}**.")
 
     @commands.command(name="errorlog", description="Sets the channel for bot error logging (Owner Only).")
     @commands.is_owner()
