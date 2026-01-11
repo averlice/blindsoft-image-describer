@@ -33,7 +33,12 @@ class GeminiCog(commands.Cog):
             return match.group(1)
         return self.model_name
 
-    @commands.command(name="describe", description="Describes an image using the Gemini model.")
+    @commands.command(
+        name="describe", 
+        description="Describes an image using Gemini (defaults to gemini-2.5-pro). Use -m to specify a model.", 
+        usage="[-m model]",
+        help="Describes an attached image. You can optionally specify which Gemini model to use by adding '-m model_name' to your message (e.g., `alii!describe -m gemini-2.0-flash`)."
+    )
     async def describe(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
             await ctx.send("The Gemini client is not initialized. Please check the console for errors.")
@@ -84,7 +89,12 @@ class GeminiCog(commands.Cog):
                 await ctx.send(truncate_message(error_detail))
                 await send_error_log(self.bot, f"Exception during image description: {e}")
     
-    @commands.command(name="test", description="Tests the bot's connection to the Gemini API.")
+    @commands.command(
+        name="test", 
+        description="Tests connection to Gemini (defaults to gemini-2.5-pro). Use -m to specify a model.", 
+        usage="[-m model]",
+        help="Tests if the bot can communicate with the Gemini API. You can optionally specify which model to test by adding '-m model_name' (e.g., `alii!test -m gemini-2.0-flash`)."
+    )
     async def test(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
             await ctx.send("The Gemini client is not initialized.")
