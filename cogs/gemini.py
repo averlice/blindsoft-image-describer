@@ -35,9 +35,9 @@ class GeminiCog(commands.Cog):
 
     @commands.command(
         name="describe", 
-        description="Describes an image using Gemini (defaults to gemini-2.5-pro). Use -m to specify a model.", 
+        description="Describes an image using Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
         usage="[-m model]",
-        help="Describes an attached image. You can optionally specify which Gemini model to use by adding '-m model_name' to your message (e.g., `alii!describe -m gemini-2.0-flash`)."
+        help="Describes an attached image. You can optionally specify which Gemini model to use by adding '-m model_name' to your message (e.g., `alii!describe -m gemini-3-flash-preview`)."
     )
     async def describe(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
@@ -91,9 +91,9 @@ class GeminiCog(commands.Cog):
     
     @commands.command(
         name="test", 
-        description="Tests connection to Gemini (defaults to gemini-2.5-pro). Use -m to specify a model.", 
+        description="Tests connection to Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
         usage="[-m model]",
-        help="Tests if the bot can communicate with the Gemini API. You can optionally specify which model to test by adding '-m model_name' (e.g., `alii!test -m gemini-2.0-flash`)."
+        help="Tests if the bot can communicate with the Gemini API. You can optionally specify which model to test by adding '-m model_name' (e.g., `alii!test -m gemini-3-flash-preview`)."
     )
     async def test(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
@@ -118,7 +118,7 @@ class GeminiCog(commands.Cog):
             await send_error_log(self.bot, f"Gemini API test failed: {e}")
 
 async def setup(bot):
-    preferred_model_name = 'gemini-2.5-pro'
+    preferred_model_name = 'gemini-3-flash-preview'
     fallback_model_name = 'gemini-2.0-flash'
     model_to_use = None
     

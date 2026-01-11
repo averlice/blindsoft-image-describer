@@ -6,7 +6,7 @@ A fully accessible Discord bot designed to help blind and low-vision users by de
 
 ## Features
 
-*   **Image Description:** Uses Google's Gemini 2.5 models to provide detailed, accessibility-focused descriptions of attached images.
+*   **Image Description:** Uses Google's Gemini 3 models to provide detailed, accessibility-focused descriptions of attached images.
 *   **OCR (Optical Character Recognition):** Extracts text from images using Tesseract, useful for reading screenshots or documents.
 *   **Accessibility First:** All bot responses are formatted to be screen-reader friendly.
 
