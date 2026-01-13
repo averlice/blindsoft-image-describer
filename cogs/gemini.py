@@ -8,6 +8,7 @@ import aiohttp
 from config import GEMINI_API_KEY
 import asyncio
 import re
+import utils
 
 # Helper function to send errors, defined outside the cog
 async def send_error_log(bot, error_message):
