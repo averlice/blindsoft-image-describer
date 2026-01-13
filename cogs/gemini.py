@@ -15,7 +15,7 @@ async def send_error_log(bot, error_message):
     await handle_error(error_message)
 
 def truncate_message(message: str, max_length: int = 1900) -> str:
-    """Truncates a message to fit Discord's character limit, adding an ellipsis if truncated."""
+    """Truncates a message to fit Discord's character limit, adding an ellipsis if truncated. Kept for legacy/error use."""
     if len(message) > max_length:
         return message[:max_length - 3] + "..."
     return message
@@ -61,8 +61,7 @@ class GeminiCog(commands.Cog):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(attachment.url) as resp:
                         if resp.status != 200:
-                            error_detail = f"Could not download image from Discord. Status: {resp.status}"
-                            await ctx.send(truncate_message(error_detail))
+                            await ctx.send("Could not download image from Discord. The error has been logged.")
                             await send_error_log(self.bot, f"Failed to download image from {attachment.url} with status {resp.status}")
                             return
                         image_bytes = await resp.read()
@@ -78,15 +77,14 @@ class GeminiCog(commands.Cog):
                 )
 
                 if response.text:
-                    await ctx.send(truncate_message(f"**Image Description ({target_model}):**\n{response.text}"))
+                    await utils.send_long_message(ctx, f"**Image Description ({target_model}):**\n{response.text}")
                 else:
                     error_detail = "Gemini API returned no description."
                     await ctx.send(truncate_message(error_detail))
                     await send_error_log(self.bot, "Gemini API returned empty text.")
 
             except Exception as e:
-                error_detail = f"An error occurred while describing the image: {e}"
-                await ctx.send(truncate_message(error_detail))
+                await ctx.send("An error occurred while describing the image. The error has been logged.")
                 await send_error_log(self.bot, f"Exception during image description: {e}")
     
     @commands.command(
@@ -113,8 +111,7 @@ class GeminiCog(commands.Cog):
             else:
                 await ctx.send("Connected, but received empty response.")
         except Exception as e:
-            error_detail = f"Failed to connect to the Gemini API: {e}"
-            await ctx.send(truncate_message(error_detail))
+            await ctx.send("Failed to connect to the Gemini API. The error has been logged.")
             await send_error_log(self.bot, f"Gemini API test failed: {e}")
 
 async def setup(bot):

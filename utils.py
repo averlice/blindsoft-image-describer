@@ -46,3 +46,26 @@ def update_setting(key, value):
     settings = load_settings()
     settings[key] = value
     save_settings(settings)
+
+async def send_long_message(ctx, message: str):
+    """Sends a message in chunks if it exceeds Discord's 2000 character limit."""
+    if len(message) <= 2000:
+        await ctx.send(message)
+        return
+
+    # Split by lines first to preserve formatting where possible
+    lines = message.split('\n')
+    current_chunk = ""
+    
+    for line in lines:
+        if len(current_chunk) + len(line) + 1 > 2000:
+            # Current chunk is full, send it
+            if current_chunk.strip():
+                await ctx.send(current_chunk)
+            current_chunk = line + "\n"
+        else:
+            current_chunk += line + "\n"
+            
+    # Send any remaining content
+    if current_chunk.strip():
+        await ctx.send(current_chunk)

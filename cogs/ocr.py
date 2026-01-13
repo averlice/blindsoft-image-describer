@@ -7,6 +7,7 @@ import aiohttp
 import logging
 import os
 import platform
+import utils
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -70,13 +71,9 @@ class OCR(commands.Cog):
                         await ctx.send("No text detected in the image.")
                         return
 
-                    # Format output (handling Discord's 2000 char limit)
+                    # Format output (handling Discord's 2000 char limit via utils)
                     formatted_text = f"**OCR Result:**\n```\n{text}\n```"
-                    if len(formatted_text) > 2000:
-                         # Split simple logic or just send first chunk
-                         await ctx.send(formatted_text[:1990] + "\n```... (truncated)")
-                    else:
-                        await ctx.send(formatted_text)
+                    await utils.send_long_message(ctx, formatted_text)
 
                 except pytesseract.TesseractNotFoundError:
                     error_msg = (
