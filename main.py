@@ -4,7 +4,7 @@ import os
 import asyncio
 import time
 import logging
-from config import DISCORD_BOT_TOKEN, OWNER_ID
+from config import DISCORD_BOT_TOKEN, OWNER_ID, OWNER_IDS
 import utils
 
 # --- Logging Setup ---
@@ -31,7 +31,7 @@ def get_prefix(bot, message):
 # Subclassing Bot to use setup_hook
 class GeminiBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=get_prefix, intents=intents, owner_id=OWNER_ID)
+        super().__init__(command_prefix=get_prefix, intents=intents, owner_ids=OWNER_IDS)
         self.start_time = None
 
     async def setup_hook(self):
@@ -61,12 +61,13 @@ async def handle_error(error_message: str):
     error_log_channel_id = settings.get("error_log_channel_id")
 
     if error_log_dm:
-        try:
-            owner = await bot.fetch_user(OWNER_ID)
-            if owner:
-                await owner.send(f"**Bot Error:**\n```\n{error_message}\n```")
-        except Exception as e:
-            logger.error(f"Failed to send error DM to owner: {e}")
+        for owner_id in OWNER_IDS:
+            try:
+                owner = await bot.fetch_user(owner_id)
+                if owner:
+                    await owner.send(f"**Bot Error:**\n```\n{error_message}\n```")
+            except Exception as e:
+                logger.error(f"Failed to send error DM to owner {owner_id}: {e}")
             
     if error_log_channel_id:
         try:
@@ -85,16 +86,17 @@ async def on_ready():
         bot.start_time = time.time()
     
     print("Bot is ready.")
-    # DM the owner on startup
-    try:
-        owner = await bot.fetch_user(OWNER_ID)
-        if owner:
-            await owner.send("haha i'm here to conker all of india!")
-            logger.info("Sent startup DM to owner.")
-        else:
-            await handle_error("Could not find owner to send startup DM.")
-    except Exception as e:
-        await handle_error(f"Failed to send startup DM: {e}")
+    # DM the owners on startup
+    for owner_id in OWNER_IDS:
+        try:
+            owner = await bot.fetch_user(owner_id)
+            if owner:
+                await owner.send("haha i'm here to conker all of india!")
+                logger.info(f"Sent startup DM to owner {owner_id}.")
+            else:
+                logger.error(f"Could not find owner {owner_id} to send startup DM.")
+        except Exception as e:
+            await handle_error(f"Failed to send startup DM to owner {owner_id}: {e}")
 
 
 @bot.event
