@@ -7,7 +7,8 @@ DEFAULT_SETTINGS = {
     "prefix": "alii!",
     "error_log_channel_id": None,
     "error_log_dm": False,
-    "auto_update": True
+    "auto_update": True,
+    "scan_image_guilds": []
 }
 
 def load_settings():

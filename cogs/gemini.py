@@ -34,6 +34,34 @@ class GeminiCog(commands.Cog):
             return match.group(1)
         return self.model_name
 
+    async def _describe_image(self, channel, attachment, target_model):
+        try:
+            # Fetch image from URL
+            async with aiohttp.ClientSession() as session:
+                async with session.get(attachment.url) as resp:
+                    if resp.status != 200:
+                        await send_error_log(self.bot, f"Failed to download image from {attachment.url} with status {resp.status}")
+                        return
+                    image_bytes = await resp.read()
+
+            # Prepare image for Gemini
+            img = Image.open(io.BytesIO(image_bytes))
+
+            # Send to Gemini
+            response = self.client.models.generate_content(
+                model=target_model,
+                contents=["Describe this image in detail for a blind user, focusing on the key objects, colors, and the overall scene.", img]
+            )
+
+            if response.text:
+                if hasattr(channel, 'send'):
+                    await utils.send_long_message(channel, f"**Image Description ({target_model}):**\n{response.text}")
+            else:
+                await send_error_log(self.bot, "Gemini API returned empty text during automatic scan.")
+
+        except Exception as e:
+            await send_error_log(self.bot, f"Exception during image description: {e}")
+
     @commands.command(
         name="describe", 
         description="Describes an image using Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
@@ -57,37 +85,44 @@ class GeminiCog(commands.Cog):
         target_model = self._get_model_from_flags(flags)
 
         async with ctx.typing():
-            try:
-                # Fetch image from URL
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(attachment.url) as resp:
-                        if resp.status != 200:
-                            await ctx.send("Could not download image from Discord. The error has been logged.")
-                            await send_error_log(self.bot, f"Failed to download image from {attachment.url} with status {resp.status}")
-                            return
-                        image_bytes = await resp.read()
-
-                # Prepare image for Gemini
-                img = Image.open(io.BytesIO(image_bytes))
-
-                # Send to Gemini
-                # The new SDK uses client.models.generate_content
-                response = self.client.models.generate_content(
-                    model=target_model,
-                    contents=["Describe this image in detail for a blind user, focusing on the key objects, colors, and the overall scene.", img]
-                )
-
-                if response.text:
-                    await utils.send_long_message(ctx, f"**Image Description ({target_model}):**\n{response.text}")
-                else:
-                    error_detail = "Gemini API returned no description."
-                    await ctx.send(truncate_message(error_detail))
-                    await send_error_log(self.bot, "Gemini API returned empty text.")
-
-            except Exception as e:
-                await ctx.send("An error occurred while describing the image. The error has been logged.")
-                await send_error_log(self.bot, f"Exception during image description: {e}")
+            await self._describe_image(ctx, attachment, target_model)
     
+    @commands.command(
+        name="scanimage",
+        aliases=["simage"],
+        description="Toggles automatic image description for all images posted in this server.",
+        help="When toggled on, the bot will automatically describe any image posted in the server. Requires Manage Server permission."
+    )
+    @commands.has_permissions(manage_guild=True)
+    async def scanimage(self, ctx: commands.Context):
+        scan_guilds = utils.get_setting("scan_image_guilds")
+        guild_id = ctx.guild.id
+        
+        if guild_id in scan_guilds:
+            scan_guilds.remove(guild_id)
+            utils.update_setting("scan_image_guilds", scan_guilds)
+            await ctx.send("Automatic image scanning has been **disabled** for this server.")
+        else:
+            scan_guilds.append(guild_id)
+            utils.update_setting("scan_image_guilds", scan_guilds)
+            await ctx.send("Automatic image scanning has been **enabled** for this server. I will now describe any images posted here.")
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild:
+            return
+
+        scan_guilds = utils.get_setting("scan_image_guilds")
+        if message.guild.id not in scan_guilds:
+            return
+
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type and attachment.content_type.startswith('image/'):
+                    # Use a background task to avoid blocking the listener
+                    # Use the default model for automatic scans
+                    asyncio.create_task(self._describe_image(message.channel, attachment, self.model_name))
+
     @commands.command(
         name="test", 
         description="Tests connection to Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
