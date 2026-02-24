@@ -47,6 +47,8 @@ A fully accessible Discord bot designed to help blind and low-vision users by de
 The default prefix is `alii!`.
 
 *   `alii!describe`: Attach an image to get a detailed description.
+    *   `-m <model>`: Specify a Gemini model (e.g., `gemini-3-flash-preview`).
+    *   `-p "<prompt>"`: Provide a custom prompt for the description (e.g., `alii!describe -p "find the link in this image"`).
 *   `alii!ocr`: Attach an image (or provide a URL) to extract text from it.
 *   `alii!ping`: Check bot latency and uptime.
 *   `alii!help`: List all available commands.
