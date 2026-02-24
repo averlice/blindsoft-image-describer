@@ -54,6 +54,8 @@ class GeminiCog(commands.Cog):
                 async with session.get(attachment.url) as resp:
                     if resp.status != 200:
                         await send_error_log(self.bot, f"Failed to download image from {attachment.url} with status {resp.status}")
+                        if hasattr(channel, 'send'):
+                            await channel.send("Failed to download image. The error has been logged.")
                         return
                     image_bytes = await resp.read()
 
@@ -67,14 +69,26 @@ class GeminiCog(commands.Cog):
                 contents=[final_prompt, img]
             )
 
-            if response.text:
+            # Safely get text content
+            text_content = None
+            try:
+                if response and response.text:
+                    text_content = response.text
+            except Exception:
+                pass
+
+            if text_content:
                 if hasattr(channel, 'send'):
-                    await utils.send_long_message(channel, f"**Image Description ({target_model}):**\n{response.text}")
+                    await utils.send_long_message(channel, f"**Image Description ({target_model}):**\n{text_content}")
             else:
-                await send_error_log(self.bot, "Gemini API returned empty text during automatic scan.")
+                await send_error_log(self.bot, f"Gemini API returned no text. Response: {response}")
+                if hasattr(channel, 'send'):
+                    await channel.send("Gemini API returned no description. The error has been logged.")
 
         except Exception as e:
-            await send_error_log(self.bot, f"Exception during image description: {e}")
+            await send_error_log(self.bot, f"Exception during image description: {type(e).__name__}: {e}")
+            if hasattr(channel, 'send'):
+                await channel.send("An error occurred during image description. The error has been logged.")
 
     @commands.command(
         name="describe", 
@@ -148,16 +162,16 @@ class GeminiCog(commands.Cog):
 
     @commands.command(
         name="test", 
-        description="Tests connection to Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
+        description="Tests connection to Gemini API.", 
         usage="[-m model]",
-        help="Tests if the bot can communicate with the Gemini API. You can optionally specify which model to test by adding '-m model_name' (e.g., `alii!test -m gemini-3-flash-preview`)."
+        help="Tests if the bot can communicate with the Gemini API. You can optionally specify which model to test by adding '-m model_name'."
     )
     async def test(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
             await ctx.send("The Gemini client is not initialized.")
             return
             
-        target_model = self._get_model_from_flags(flags)
+        target_model, _ = self._parse_flags(flags)
             
         await ctx.send(f"Testing connection to Gemini API with model: `{target_model}`")
         try:
@@ -165,13 +179,24 @@ class GeminiCog(commands.Cog):
                 model=target_model,
                 contents="This is a test. Is the API working?"
             )
-            if response.text:
+            
+            # Safely get text content
+            text_content = None
+            try:
+                if response and response.text:
+                    text_content = response.text
+            except Exception:
+                pass
+
+            if text_content:
                 await ctx.send("Successfully connected to the Gemini API and received a response.")
             else:
-                await ctx.send("Connected, but received empty response.")
+                await ctx.send("Connected, but received an empty or unrecognized response structure. The error has been logged.")
+                await send_error_log(self.bot, f"Gemini API test returned no text. Response: {response}")
         except Exception as e:
-            await ctx.send("Failed to connect to the Gemini API. The error has been logged.")
-            await send_error_log(self.bot, f"Gemini API test failed: {e}")
+            error_type = type(e).__name__
+            await ctx.send(f"Failed to connect to the Gemini API. Error ({error_type}): {e}")
+            await send_error_log(self.bot, f"Gemini API test failed: {error_type}: {e}")
 
 async def setup(bot):
     preferred_model_name = 'gemini-3-flash-preview'

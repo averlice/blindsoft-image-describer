@@ -32,7 +32,7 @@ def get_prefix(bot, message):
 class GeminiBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=get_prefix, intents=intents, owner_ids=OWNER_IDS)
-        self.start_time = None
+        self.start_time = time.time()
 
     async def setup_hook(self):
         # Load cogs here to ensure it only happens once
@@ -82,8 +82,6 @@ async def handle_error(error_message: str):
 async def on_ready():
     logger.info(f"Logged in as {bot.user.name} (ID: {bot.user.id})")
     print("------")
-    if bot.start_time is None:
-        bot.start_time = time.time()
     
     print("Bot is ready.")
     # DM the owners on startup

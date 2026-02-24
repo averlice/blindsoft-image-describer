@@ -1,0 +1,10 @@
+{
+    "prefix": "alii!",
+    "error_log_channel_id": null,
+    "error_log_dm": true,
+    "auto_update": true,
+    "scan_image_guilds": [
+        1459648096530202634,
+        1373065266228891760
+    ]
+}
