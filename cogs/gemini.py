@@ -28,13 +28,26 @@ class GeminiCog(commands.Cog):
         self.client = client
         self.model_name = model_name
 
-    def _get_model_from_flags(self, flags: str) -> str:
-        match = re.search(r"-m\s+([^\s]+)", flags)
-        if match:
-            return match.group(1)
-        return self.model_name
+    def _parse_flags(self, flags: str):
+        model = self.model_name
+        prompt = None
+        
+        # Match model flag: -m model_name
+        model_match = re.search(r"-m\s+([^\s-]+)", flags)
+        if model_match:
+            model = model_match.group(1)
+            
+        # Match prompt flag: -p "custom prompt" or --prompt "custom prompt"
+        # Prioritizes quoted strings, falls back to unquoted text until next flag or end
+        prompt_match = re.search(r"(?:-p|--prompt)\s+(?:([\"'])(.*?)\1|([^\s-]+(?:[^-]*)))", flags)
+        if prompt_match:
+            prompt = prompt_match.group(2) or prompt_match.group(3)
+            if prompt:
+                prompt = prompt.strip()
+                
+        return model, prompt
 
-    async def _describe_image(self, channel, attachment, target_model):
+    async def _describe_image(self, channel, attachment, target_model, prompt=None):
         try:
             # Fetch image from URL
             async with aiohttp.ClientSession() as session:
@@ -48,9 +61,10 @@ class GeminiCog(commands.Cog):
             img = Image.open(io.BytesIO(image_bytes))
 
             # Send to Gemini
+            final_prompt = prompt or "Describe this image in detail for a blind user, focusing on the key objects, colors, and the overall scene."
             response = self.client.models.generate_content(
                 model=target_model,
-                contents=["Describe this image in detail for a blind user, focusing on the key objects, colors, and the overall scene.", img]
+                contents=[final_prompt, img]
             )
 
             if response.text:
@@ -64,9 +78,9 @@ class GeminiCog(commands.Cog):
 
     @commands.command(
         name="describe", 
-        description="Describes an image using Gemini (defaults to gemini-3-flash-preview). Use -m to specify a model.", 
-        usage="[-m model]",
-        help="Describes an attached image. You can optionally specify which Gemini model to use by adding '-m model_name' to your message (e.g., `alii!describe -m gemini-3-flash-preview`)."
+        description="Describes an image using Gemini. Use -m for model and -p for a custom prompt.", 
+        usage="[-m model] [-p \"prompt\"]",
+        help="Describes an attached image. You can specify a model with '-m model_name' and a custom prompt with '-p \"your prompt\"'."
     )
     async def describe(self, ctx: commands.Context, *, flags: str = ""):
         if not self.client:
@@ -82,10 +96,10 @@ class GeminiCog(commands.Cog):
             await ctx.send("The attached file must be an image.")
             return
 
-        target_model = self._get_model_from_flags(flags)
+        target_model, custom_prompt = self._parse_flags(flags)
 
         async with ctx.typing():
-            await self._describe_image(ctx, attachment, target_model)
+            await self._describe_image(ctx, attachment, target_model, prompt=custom_prompt)
     
     @commands.command(
         name="scanimage",
@@ -110,6 +124,15 @@ class GeminiCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or not message.guild:
+            return
+
+        # 1. Only process future messages (sent after bot started)
+        if self.bot.start_time and message.created_at.timestamp() < self.bot.start_time:
+            return
+
+        # 3. Ignore if the message is a command to prevent double descriptions
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
             return
 
         scan_guilds = utils.get_setting("scan_image_guilds")
