@@ -32,10 +32,11 @@ class GeminiCog(commands.Cog):
         model = self.model_name
         prompt = None
         
-        # Match model flag: -m model_name
-        model_match = re.search(r"-m\s+([^\s-]+)", flags)
+        # Match model flag: -m model_name (supports hyphens in model names like "gemini-3.5-flash")
+        # Handles both quoted and unquoted model names
+        model_match = re.search(r"-m\s+(?:([\"'])(.*?)\1|([^\s-][^\s]*))", flags)
         if model_match:
-            model = model_match.group(1)
+            model = model_match.group(2) or model_match.group(3)
             
         # Match prompt flag: -p "custom prompt" or --prompt "custom prompt"
         # Prioritizes quoted strings, falls back to unquoted text until next flag or end
